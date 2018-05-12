@@ -297,16 +297,20 @@ namespace ProiectColectivGUI
                 streamWriter.Write(
                    functionType + " " + functionName + "(");
 
-                for(int i = 0; i < vectorTipuriParametrii.Length-1; i++)
+                int i = 0;
+                for( i = 0; i < vectorTipuriParametrii.Length-1; i++)
                 {
-                    if(vectorTipuriParametrii[i] != null)
+                    if(vectorTipuriParametrii[i+1] != null)
                     {
                         streamWriter.Write(vectorTipuriParametrii[i] + " " + vectorParametriiFaraValori[i] + ",");
                     }
                 }
 
-                int j = vectorTipuriParametrii.Length - 1;
-                streamWriter.Write(vectorTipuriParametrii[j] + " " + vectorParametriiFaraValori[j] + ")");
+                i = 0;
+                while (vectorTipuriParametrii[i+1] != null)
+                    i++;
+
+                streamWriter.Write(vectorTipuriParametrii[i] + " " + vectorParametriiFaraValori[i] + ")" + "\r\n");
 
                 streamWriter.Write(
                     "{" + "\r\n" +
@@ -327,7 +331,7 @@ namespace ProiectColectivGUI
             }
 
 
-
+            bool tempOk = false;
             if (DBCOpen == true && RteOpen == true && inputOpen == true)
             {
                 outputPath = filePath.Substring(0, filePath.Length - ((fileName.Length) + 1));
@@ -338,8 +342,8 @@ namespace ProiectColectivGUI
                         Console.WriteLine("output path --------->" + outputPath);
                         try
                         {
-                            //daca nu se gaseste vreun parametru in dbc sau vda_rte
-                            if (tipVarDarian == "TIP_VAR_NOT_GIVEN" || tipVar2Darian == "TIP_VAR_2_NOT_GIVEN1" || functieReadHoza == "FUNCTIE_READ_NOT_GIVEN1")
+                            //daca nu se gaseste vreun parametru in dbc sau vda_rte (folosind functiile de la Hoza si Darian)
+                            if (tempOk == false)
                             {
                                
                                 parametriiFaraValori[indexParametriiFaraValori++] = elementDeCautat;
@@ -356,31 +360,31 @@ namespace ProiectColectivGUI
                                     "Variable names needed",
                                     parametriiFaraValori);
 
-                                tipVarDarian = valoriParametriiFaraValori[0];
+                                try
+                                {
+                                    multipleConditions(valoriParametriiFaraValori, parametriiFaraValori);
+
+                                }
+                                catch (Exception exc)
+                                {
+                                    Console.WriteLine("Exception" + exc.Message);
+                                }
+
+                                tempOk = true;
+                                
 
                             }
                             else
                             {
-                                if (1 == 1 && 2 == 2)
-                                {
-                                    try
-                                    {
-                                        singleCondition();
-                                    }
-                                    catch (Exception exc)
-                                    {
-                                        Console.WriteLine("Exception" + exc.Message);
-                                    }
-
-                                }
-                                else
-                                {
-                                    MessageBox.Show(
-                                    "One or more variables from the input file are not found in DBC and/or Rte_Vda",
-                                    "Warning",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
-                                }
+                                //daca parametrii sunt gasiti in dbc sau rte_vda (folosind functiile de la Hoza si Darian)
+                               try
+                               {
+                                   singleCondition();
+                               }
+                               catch (Exception exc)
+                               {
+                                   Console.WriteLine("Exception" + exc.Message);
+                               }
                             }
                         }
                         catch (FileNotFoundException fnfe)
