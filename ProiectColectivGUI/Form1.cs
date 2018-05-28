@@ -27,7 +27,7 @@ namespace ProiectColectivGUI
         static string[] valoriParametriiFaraValori = new string[10];
         static int indexValoriParametriiFaraValori = 0;
         static int indexParametriiFaraValori = 0;
-        static string filePath, fileName;
+        static string filePath, fileName, DBCFile, RteVdaFile;
         OpenFileDialog ofd = new OpenFileDialog();
         bool DBCOpen = false, RteOpen = false, inputOpen = false;
 
@@ -116,6 +116,7 @@ namespace ProiectColectivGUI
                 openFile = ofd.FileName;
                 DBCLabel.Text = ofd.SafeFileName;
                 DBCOpen = true;
+                DBCFile = ofd.FileName;
             }
         }
 
@@ -128,6 +129,7 @@ namespace ProiectColectivGUI
                 openFile = ofd.FileName;
                 Rte_VdaLabel.Text = ofd.SafeFileName;
                 RteOpen = true;
+                RteVdaFile = ofd.FileName;
             }
         }
 
@@ -148,6 +150,93 @@ namespace ProiectColectivGUI
         }
 
 
+        ///Darian
+        static public bool dbcVariableCheck(string fileToRead, string cuvantCautat)
+        {
+            try
+            {
+                string textFromTheFile = System.IO.File.ReadAllText(fileToRead); //variabila care stocheaza continutul fisierului 
+
+                if (textFromTheFile.Contains(cuvantCautat))
+                {
+                    Console.WriteLine("Stringul cautat de dvs. ( \"{0}\" ) a fost gasit! (return true)", cuvantCautat);
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine("Stringul cautat de dvs. ( \"{0}\" ) nu a fost gasit! (return false)", cuvantCautat);
+                    return false;
+                }
+
+                //Console.WriteLine("Fisierul contine : {0}", textFromTheFile);
+            }
+            catch (IOException e)
+            {
+                Console.WriteLine(e);
+                Console.WriteLine("return false");
+                return false;
+            }
+        }
+
+        static public string regexFunctie(string fileToRead, string cuvantDeCautat)
+        {
+            string textFromTheFile = System.IO.File.ReadAllText(fileToRead);
+
+            //stringul format din cuvantul pe care trebuie sa il cautam si expresia regulata
+            string cuvantDeCautatPlusRegex = cuvantDeCautat + @"\s:\s[0-9]{2}\W([0-9]+)@";
+
+            var match = Regex.Match(textFromTheFile, cuvantDeCautatPlusRegex);
+
+            if (match.Success)
+            {
+                Console.WriteLine("Numarul de biți este {0}", match.Groups[1].Value);
+
+                int nrBiti = Convert.ToInt32(match.Groups[1].Value);
+
+                switch (nrBiti)
+                {
+                    case int n when (n >= 1 && n <= 8):
+                        Console.WriteLine("Tipul de date este unsigned char.");
+                        return "unsigned char";
+                    case int n when (n >= 9 && n <= 16):
+                        Console.WriteLine("Tipul de date este unsigned short.");
+                        return "unsigned short";
+                    case int n when (n >= 17 && n <= 32):
+                        Console.WriteLine("Tipul de date este unsigned int");
+                        return "unsigned int";
+                    default:
+                        Console.WriteLine("Stringul \"{0}\" nu a fost gasit in fisier.", cuvantDeCautat);
+                        return null;
+                }
+            }
+            return null;
+        }
+
+        ///End Darian
+
+
+        ///Hoza
+        public static String Cautare(string adresaFisier, string stringul)
+        {
+            String[] cuv = System.IO.File.ReadAllLines(adresaFisier);
+
+            String pattern = @"\s*#\s*define\s*(\w*)\s*(\w*)\s*";
+
+            foreach (string it in cuv)
+            {
+                Match match = Regex.Match(it, pattern, RegexOptions.IgnoreCase);
+                if (it.Contains(stringul) && it.Contains("Rte_Read") && match.Success)
+                {
+                    String rezultat = match.Groups[1].Value;
+                    //Console.WriteLine("." + rezultat + ".");
+                    return rezultat;
+                }
+            }
+            return "STRING NOT FOUND";
+        }
+
+
+        ///EndHoza
 
         private void GenerateButton_Click(object sender, EventArgs e)
         {
@@ -286,6 +375,7 @@ namespace ProiectColectivGUI
                     "}"
                     );
                 streamWriter.Close();
+                this.Close();
             }
 
             void multipleConditions(string[] vectorTipuriParametrii, string[] vectorParametriiFaraValori)
@@ -316,7 +406,7 @@ namespace ProiectColectivGUI
                     "{" + "\r\n" +
                     tipVarDarian + " " + variable + ";" + "\r\n" +
                     tipVar2Darian + " " + elementDeCautat + ";" + "\r\n" +
-                    functieReadHoza + "(&" + elementDeCautat + ");" + "\r\n" +
+                    
                     "if(" + elementDeCautat + " == " + vectorValori[k++] + ")" + "\r\n" +
                     "{" + "\r\n" +
                     "\t" + variable + " = " + vectorValori[k++] + ";" + "\r\n" +
@@ -328,10 +418,11 @@ namespace ProiectColectivGUI
                     "}"
                     );
                 streamWriter.Close();
+                this.Close();
             }
 
 
-            bool tempOk = false;
+            //bool tempOk = false;
             if (DBCOpen == true && RteOpen == true && inputOpen == true)
             {
                 outputPath = filePath.Substring(0, filePath.Length - ((fileName.Length) + 1));
@@ -343,7 +434,7 @@ namespace ProiectColectivGUI
                         try
                         {
                             //daca nu se gaseste vreun parametru in dbc sau vda_rte (folosind functiile de la Hoza si Darian)
-                            if (tempOk == false)
+                            if (dbcVariableCheck(DBCFile, elementDeCautat) == false )
                             {
                                
                                 parametriiFaraValori[indexParametriiFaraValori++] = elementDeCautat;
@@ -362,6 +453,9 @@ namespace ProiectColectivGUI
 
                                 try
                                 {
+
+                                    tipVarDarian = valoriParametriiFaraValori[0];
+                                    tipVar2Darian = valoriParametriiFaraValori[0];
                                     multipleConditions(valoriParametriiFaraValori, parametriiFaraValori);
 
                                 }
@@ -370,16 +464,20 @@ namespace ProiectColectivGUI
                                     Console.WriteLine("Exception" + exc.Message);
                                 }
 
-                                tempOk = true;
+                                //tempOk = true;
                                 
 
                             }
                             else
                             {
                                 //daca parametrii sunt gasiti in dbc sau rte_vda (folosind functiile de la Hoza si Darian)
+                               
                                try
                                {
-                                   singleCondition();
+                                    functieReadHoza= Cautare(RteVdaFile, elementDeCautat);
+                                    tipVarDarian = regexFunctie(DBCFile, elementDeCautat);
+                                    tipVar2Darian = regexFunctie(DBCFile, elementDeCautat);
+                                    singleCondition();
                                }
                                catch (Exception exc)
                                {
