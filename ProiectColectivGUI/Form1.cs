@@ -151,22 +151,87 @@ namespace ProiectColectivGUI
 
 
         ///Darian
-        static public bool dbcVariableCheck(string fileToRead, string cuvantCautat)
+      //the code for XML File
+        static public string xmlVariableCheck(string fileToRead, string cuvantCautat)
         {
             try
             {
+                string ok = "null";
                 string textFromTheFile = System.IO.File.ReadAllText(fileToRead); //variabila care stocheaza continutul fisierului 
 
                 if (textFromTheFile.Contains(cuvantCautat))
                 {
                     Console.WriteLine("Stringul cautat de dvs. ( \"{0}\" ) a fost gasit! (return true)", cuvantCautat);
-                    return true;
+                    ok = regexFunctieXML(fileToRead, cuvantCautat);
                 }
                 else
                 {
                     Console.WriteLine("Stringul cautat de dvs. ( \"{0}\" ) nu a fost gasit! (return false)", cuvantCautat);
-                    return false;
                 }
+                return ok;
+                //Console.WriteLine("Fisierul contine : {0}", textFromTheFile);
+            }
+            catch (IOException e)
+            {
+                Console.WriteLine(e);
+                return null;
+            }
+        }
+
+        static public string regexFunctieXML(string fileToRead, string cuvantCautat)
+        {
+            string linie;
+            var gasit = false;
+            Regex expresieRegulata = new Regex(@"DataTypes\/([a-zA-Z]*[0-9]*)\<");
+
+            System.IO.StreamReader file = new System.IO.StreamReader(fileToRead);
+
+            while ((linie = file.ReadLine()) != null)
+            {
+                if (linie.Contains(cuvantCautat))
+                {
+                    gasit = true;
+                }
+
+                if (gasit == true)
+                {
+                    Match match = expresieRegulata.Match(linie);
+                    if (match.Success)
+                    {
+                        Console.WriteLine(match.Groups[1].Value);
+                        return match.Groups[1].Value;
+                    }
+                }
+            }
+            file.Close();
+            return null;
+        }
+
+
+
+
+
+
+
+        //the code for DBC 
+        static public string dbcVariableCheck(string fileToRead, string cuvantCautat)
+        {
+            try
+            {
+                string ok = "null";
+                string textFromTheFile = System.IO.File.ReadAllText(fileToRead); //variabila care stocheaza continutul fisierului 
+
+                if (textFromTheFile.Contains(cuvantCautat))
+                {
+                    Console.WriteLine("Stringul cautat de dvs. ( \"{0}\" ) a fost gasit! (return true)", cuvantCautat);
+                    ok = regexFunctieDBC(fileToRead, cuvantCautat);
+                }
+                else
+                {
+                    Console.WriteLine("Stringul cautat de dvs. ( \"{0}\" ) nu a fost gasit! (return false)", cuvantCautat);
+
+                }
+                return ok;
 
                 //Console.WriteLine("Fisierul contine : {0}", textFromTheFile);
             }
@@ -174,11 +239,11 @@ namespace ProiectColectivGUI
             {
                 Console.WriteLine(e);
                 Console.WriteLine("return false");
-                return false;
+                return null;
             }
         }
 
-        static public string regexFunctie(string fileToRead, string cuvantDeCautat)
+        static public string regexFunctieDBC(string fileToRead, string cuvantDeCautat)
         {
             string textFromTheFile = System.IO.File.ReadAllText(fileToRead);
 
@@ -197,19 +262,36 @@ namespace ProiectColectivGUI
                 {
                     case int n when (n >= 1 && n <= 8):
                         Console.WriteLine("Tipul de date este unsigned char.");
-                        return "unsigned char";
+                        return "uint8";
                     case int n when (n >= 9 && n <= 16):
                         Console.WriteLine("Tipul de date este unsigned short.");
-                        return "unsigned short";
+                        return "uint16";
                     case int n when (n >= 17 && n <= 32):
                         Console.WriteLine("Tipul de date este unsigned int");
-                        return "unsigned int";
+                        return "uint32";
                     default:
                         Console.WriteLine("Stringul \"{0}\" nu a fost gasit in fisier.", cuvantDeCautat);
                         return null;
                 }
             }
-            return null;
+
+            return "NOT FOUND";
+
+        }
+
+        //the code for the final function
+        public static string typeOfInputFile(string path, string searchedWord)
+        {
+            string extensia = Path.GetExtension(path);
+            switch (extensia)
+            {
+                case ".dbc":
+                    return dbcVariableCheck(path, searchedWord);
+                case ".xml":
+                    return xmlVariableCheck(path, searchedWord);
+                default:
+                    return null;
+            }
         }
 
         ///End Darian
@@ -240,8 +322,9 @@ namespace ProiectColectivGUI
 
         private void GenerateButton_Click(object sender, EventArgs e)
         {
-            int nrAnds = 0, nrOrs=0;
+            int nrAnds = 0, nrOrs = 0, nrElementDeCautat = 0;
             string toSearch = "Empty", elementDeCautat = "";
+            string[] vectorElementDeCautat = new string[10];
             string functionName = "Vda_Calculate", variable, valoare, outputPath, functionType = "void";
             string[] vectorValori = new string[10];
             try
@@ -264,6 +347,12 @@ namespace ProiectColectivGUI
             {
                 elementDeCautat = matchElemDeCautat.Groups[1].Value;
                 Console.WriteLine("elem de cautat---------------->" + elementDeCautat);
+                while (matchElemDeCautat.Success)
+                {
+                    vectorElementDeCautat[nrElementDeCautat++] = matchElemDeCautat.Groups[1].Value;
+                    matchElemDeCautat = matchElemDeCautat.NextMatch();
+                }
+
             }
             else
             {
@@ -358,30 +447,47 @@ namespace ProiectColectivGUI
 
                 StreamWriter streamWriter = new StreamWriter(outputPath + "\\output1.c", false, Encoding.ASCII);
 
-                streamWriter.Write(
-                    functionType + " " + functionName + "(" + functionType + ")" + "\r\n" +
-                    "{" + "\r\n" +
-                    tipVarDarian + " " + variable + ";" + "\r\n" +
-                    tipVar2Darian + " " + elementDeCautat + ";" + "\r\n" +
-                    functieReadHoza + "(&" + elementDeCautat + ");" + "\r\n" +
-                    "if(" + elementDeCautat + " == " + vectorValori[k++] + ")" + "\r\n" +
-                    "{" + "\r\n" +
-                    "\t" + variable + " = " + vectorValori[k++] + ";" + "\r\n" +
-                    "}" + "\r\n" +
-                    "else" + "\r\n" +
-                    "{" + "\r\n" +
-                    "\t" + variable + " = " + vectorValori[k++] + ";" + "\r\n" +
-                    "}" + "\r\n" +
-                    "}"
-                    );
+                for(int i = 0; i<= vectorElementDeCautat.Length-1; i++)
+                {
+                    if (vectorElementDeCautat[i] != null)
+                    {
+                        functieReadHoza = Cautare(RteVdaFile, vectorElementDeCautat[i]);
+                        tipVarDarian = regexFunctieDBC(DBCFile, vectorElementDeCautat[i]);
+                        tipVar2Darian = regexFunctieDBC(DBCFile, vectorElementDeCautat[i]);
+
+
+                        streamWriter.Write(
+                        functionType + " " + functionName + "(" + functionType + ")" + "\r\n" +
+                        "{" + "\r\n" +
+                        tipVarDarian + " " + variable + ";" + "\r\n" +
+                        tipVar2Darian + " " + vectorElementDeCautat[i] + ";" + "\r\n" +
+                        functieReadHoza + "(&" + vectorElementDeCautat[i] + ");" + "\r\n" +
+                        "if(" + vectorElementDeCautat[i] + " == " + vectorValori[k++] + ")" + "\r\n" +
+                        "{" + "\r\n" +
+                        "\t" + variable + " = " + vectorValori[k++] + ";" + "\r\n" +
+                        "}" + "\r\n" +
+                        "else" + "\r\n" +
+                        "{" + "\r\n" +
+                        "\t" + variable + " = " + vectorValori[k++] + ";" + "\r\n" +
+                        "}" + "\r\n" +
+                        "}" + "\r\n" + "\r\n"
+                        );
+                    }
+                }
+                
                 streamWriter.Close();
                 this.Close();
             }
 
             void multipleConditions(string[] vectorTipuriParametrii, string[] vectorParametriiFaraValori)
             {
+
                 int k = 0;
 
+                tipVarDarian = valoriParametriiFaraValori[0];
+                tipVar2Darian = valoriParametriiFaraValori[0];
+
+            
                 StreamWriter streamWriter = new StreamWriter(outputPath + "\\output1.c", false, Encoding.ASCII);
 
                 streamWriter.Write(
@@ -405,7 +511,7 @@ namespace ProiectColectivGUI
                 streamWriter.Write(
                     "{" + "\r\n" +
                     tipVarDarian + " " + variable + ";" + "\r\n" +
-                    tipVar2Darian + " " + elementDeCautat + ";" + "\r\n" +
+                    
                     
                     "if(" + elementDeCautat + " == " + vectorValori[k++] + ")" + "\r\n" +
                     "{" + "\r\n" +
@@ -434,7 +540,7 @@ namespace ProiectColectivGUI
                         try
                         {
                             //daca nu se gaseste vreun parametru in dbc sau vda_rte (folosind functiile de la Hoza si Darian)
-                            if (dbcVariableCheck(DBCFile, elementDeCautat) == false )
+                            if ( (typeOfInputFile(DBCFile, elementDeCautat).Equals ("null")) )
                             {
                                
                                 parametriiFaraValori[indexParametriiFaraValori++] = elementDeCautat;
@@ -454,9 +560,7 @@ namespace ProiectColectivGUI
                                 try
                                 {
 
-                                    tipVarDarian = valoriParametriiFaraValori[0];
-                                    tipVar2Darian = valoriParametriiFaraValori[0];
-                                    multipleConditions(valoriParametriiFaraValori, parametriiFaraValori);
+                                  multipleConditions(valoriParametriiFaraValori, parametriiFaraValori);
 
                                 }
                                 catch (Exception exc)
@@ -474,9 +578,6 @@ namespace ProiectColectivGUI
                                
                                try
                                {
-                                    functieReadHoza= Cautare(RteVdaFile, elementDeCautat);
-                                    tipVarDarian = regexFunctie(DBCFile, elementDeCautat);
-                                    tipVar2Darian = regexFunctie(DBCFile, elementDeCautat);
                                     singleCondition();
                                }
                                catch (Exception exc)
